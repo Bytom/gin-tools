@@ -32,8 +32,8 @@ type PaginationQuery Pagination
 // PaginationResp is the response struct to pagination datas
 type PaginationResp struct {
 	*Pagination
-	Total int64 `json:"total"`
-	Links links `json:"_links"`
+	Total uint64 `json:"total"`
+	Links links  `json:"_links"`
 }
 
 type links struct {
@@ -64,12 +64,6 @@ func ParsePagination(c *gin.Context) (*PaginationQuery, error) {
 		Start: start,
 		Limit: limit,
 	}, nil
-}
-
-type paginationInfo struct {
-	Start   uint64
-	Limit   uint64
-	HasNext bool
 }
 
 // PaginationProcessor is the middle result of paging query
