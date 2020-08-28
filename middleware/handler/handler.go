@@ -14,21 +14,18 @@ type FrontFilter func(ctx *gin.Context) error
 // RequestFilter represent a filter function that is filter request
 type RequestFilter func(ctx *gin.Context, req interface{}) error
 
-// FormatErrResp is the formatting error response function for Handler
-type FormatErrResp func(error) Response
-
 // Handler is a framework for processing each API request, which contains parsing request parameters, error handling and so on
 type Handler struct {
 	frontFilters   []FrontFilter
 	requestFilters []RequestFilter
-	formatErrResp  FormatErrResp
+	errorCodes     map[error]int
 }
 
 type handlerFun interface{}
 
 // NewHandler return a handler instance
-func NewHandler(frontFilters []FrontFilter, requestFilters []RequestFilter, formatErrResp FormatErrResp) *Handler {
-	return &Handler{frontFilters: frontFilters, requestFilters: requestFilters, formatErrResp: formatErrResp}
+func NewHandler(errorCodes map[error]int, frontFilters []FrontFilter, requestFilters []RequestFilter) *Handler {
+	return &Handler{errorCodes: errorCodes, frontFilters: frontFilters, requestFilters: requestFilters}
 }
 
 func callHandleFunc(fun handlerFun, args ...interface{}) []interface{} {
@@ -83,7 +80,7 @@ func (h *Handler) HandleMiddleware(handleFunc interface{}) func(*gin.Context) {
 	return func(context *gin.Context) {
 		for _, filter := range h.frontFilters {
 			if err := filter(context); err != nil {
-				RespondErrorResp(context, err, h.formatErrResp)
+				h.RespondErrorResp(context, err)
 				return
 			}
 		}
@@ -94,13 +91,13 @@ func (h *Handler) HandleMiddleware(handleFunc interface{}) func(*gin.Context) {
 func (h *Handler) handleRequest(context *gin.Context, fun handlerFun) {
 	args, err := h.buildHandleFuncArgs(fun, context)
 	if err != nil {
-		RespondErrorResp(context, err, h.formatErrResp)
+		h.RespondErrorResp(context, err)
 		return
 	}
 
 	result := callHandleFunc(fun, args...)
 	if err := result[len(result)-1]; err != nil {
-		RespondErrorResp(context, err.(error), h.formatErrResp)
+		h.RespondErrorResp(context, err.(error))
 		return
 	}
 
