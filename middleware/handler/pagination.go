@@ -20,10 +20,22 @@ var (
 	errParsePaginationLimit = fmt.Errorf("parse pagination limit")
 )
 
+// PaginationResult used to return the pagination info
+type PaginationResult struct {
+	data  interface{}
+	total uint64
+}
+
+// NewPaginationResult is a factory method of PaginationResult
+func NewPaginationResult(data interface{}, total uint64) *PaginationResult {
+	return &PaginationResult{data: data, total: total}
+}
+
 // PaginationQuery represent an argument of pagination query
 type Pagination struct {
 	Start uint64 `json:"start"`
 	Limit uint64 `json:"limit"`
+	Total uint64 `json:"total,omitempty"`
 }
 
 // PaginationQuery is the conditions for paging query
@@ -32,8 +44,7 @@ type PaginationQuery Pagination
 // PaginationResp is the response struct to pagination datas
 type PaginationResp struct {
 	*Pagination
-	Total uint64 `json:"total"`
-	Links links  `json:"_links"`
+	Links links `json:"_links"`
 }
 
 type links struct {
@@ -74,11 +85,12 @@ type PaginationProcessor struct {
 }
 
 // NewPaginationProcessor create a new PaginationProcessor
-func NewPaginationProcessor(query *PaginationQuery, size int) *PaginationProcessor {
+func NewPaginationProcessor(query *PaginationQuery, size int, total uint64) *PaginationProcessor {
 	return &PaginationProcessor{
 		Pagination: &Pagination{
 			Start: query.Start,
 			Limit: query.Limit,
+			Total: total,
 		},
 		HasNext: size == int(query.Limit),
 		HasPrev: 0 != int(query.Start),

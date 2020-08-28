@@ -43,7 +43,6 @@ func RespondSuccessPaginationResp(c *gin.Context, data interface{}, paginationPr
 		Data: data,
 		Pagination: &PaginationResp{
 			Pagination: paginationProcessor.Pagination,
-			Total:      c.Value(TotalLabel).(uint64),
 			Links:      links,
 		},
 	})

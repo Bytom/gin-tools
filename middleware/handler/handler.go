@@ -123,9 +123,10 @@ func (h *Handler) processPaginationIfPresent(args []interface{}, result []interf
 		return false
 	}
 
-	list := result[0]
+	paginationResult := result[0].(*PaginationResult)
+	list := paginationResult.data
 	size := reflect.ValueOf(list).Len()
-	paginationProcessor := NewPaginationProcessor(query, size)
+	paginationProcessor := NewPaginationProcessor(query, size, paginationResult.total)
 	RespondSuccessPaginationResp(context, list, paginationProcessor)
 	return true
 }
@@ -165,9 +166,10 @@ func (h *Handler) buildHandleFuncArgs(fun handlerFun, context *gin.Context) ([]i
 }
 
 var (
-	errorType           = reflect.TypeOf((*error)(nil)).Elem()
-	contextType         = reflect.TypeOf((*gin.Context)(nil))
-	paginationQueryType = reflect.TypeOf((*PaginationQuery)(nil))
+	errorType            = reflect.TypeOf((*error)(nil)).Elem()
+	contextType          = reflect.TypeOf((*gin.Context)(nil))
+	paginationQueryType  = reflect.TypeOf((*PaginationQuery)(nil))
+	paginationResultType = reflect.TypeOf((*PaginationResult)(nil))
 )
 
 // ValidateFuncType used to validate the handler function's argumetns and return value
@@ -195,8 +197,8 @@ func ValidateFuncType(fun handlerFun) error {
 
 	hasPagination := ft.In(ft.NumIn()-1) == paginationQueryType
 	// if has pagination, the first return value must slice or array
-	if hasPagination && ft.Out(0).Kind() != reflect.Slice && ft.Out(0).Kind() != reflect.Array {
-		return errors.New("the first return value of pagination must slice of array in " + ft.String())
+	if hasPagination && ft.Out(0) != paginationResultType {
+		return errors.New("the first return value of pagination must paginationResultType in " + ft.String())
 	}
 
 	if !ft.Out(ft.NumOut() - 1).Implements(errorType) {

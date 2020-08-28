@@ -10,21 +10,6 @@ var (
 	errInvalidFilterType = errors.New("invalid filter type")
 )
 
-// AccessTokenAble  used to determine whether a request contains access token
-type AccessTokenAble interface {
-	GetAccessToken() string
-}
-
-// AccessTokenReq represent a request contains access token
-type AccessTokenReq struct {
-	AccessToken string `json:"access_token"`
-}
-
-// GetAccessToken return access token
-func (a *AccessTokenReq) GetAccessToken() string {
-	return a.AccessToken
-}
-
 // DisplayAble used to determine whether a request contains display sort
 type DisplayAble interface {
 	GetOrder() string
