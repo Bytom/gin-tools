@@ -112,7 +112,7 @@ func (p *PaginationProcessor) getLinks(baseURL string) links {
 	if p.HasPrev {
 		var b strings.Builder
 		prevStart := p.Start - p.Limit
-		if prevStart < 0 {
+		if prevStart < 0 || p.Start < p.Limit {
 			prevStart = 0
 		}
 		fmt.Fprintf(&b, "%s?limit=%d&start=%d", baseURL, p.Limit, prevStart)
