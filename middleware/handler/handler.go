@@ -14,6 +14,16 @@ type FrontFilter func(ctx *gin.Context) error
 // RequestFilter represent a filter function that is filter request
 type RequestFilter func(ctx *gin.Context, req interface{}) error
 
+// SimpleHandler is a framework for processing each API request, which contains parsing request parameters, error handling and so on
+type SimpleHandler struct {
+	*Handler
+}
+
+// NewSimpleHandler return a handler instance
+func NewSimpleHandler(errorCodes map[error]int, frontFilters []FrontFilter, requestFilters []RequestFilter) *SimpleHandler {
+	return &SimpleHandler{&Handler{errorCodes: errorCodes, frontFilters: frontFilters, requestFilters: requestFilters}}
+}
+
 // Handler is a framework for processing each API request, which contains parsing request parameters, error handling and so on
 type Handler struct {
 	frontFilters   []FrontFilter
@@ -106,11 +116,11 @@ func (h *Handler) handleRequest(context *gin.Context, fun handlerFun) {
 	}
 
 	if len(result) == 1 {
-		RespondSuccessResp(context, struct{}{})
+		h.RespondSuccessResp(context, struct{}{})
 		return
 	}
 
-	RespondSuccessResp(context, result[0])
+	h.RespondSuccessResp(context, result[0])
 }
 
 func (h *Handler) processPaginationIfPresent(args []interface{}, result []interface{}, context *gin.Context) bool {
@@ -124,7 +134,7 @@ func (h *Handler) processPaginationIfPresent(args []interface{}, result []interf
 	list := paginationResult.data
 	size := reflect.ValueOf(list).Len()
 	paginationProcessor := NewPaginationProcessor(query, size, paginationResult.total)
-	RespondSuccessPaginationResp(context, list, paginationProcessor)
+	h.RespondSuccessPaginationResp(context, list, paginationProcessor)
 	return true
 }
 
