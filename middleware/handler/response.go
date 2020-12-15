@@ -46,12 +46,12 @@ func (h *Handler) formatErrResp(err error) Response {
 }
 
 // RespondSuccessResp return success response
-func RespondSuccessResp(c *gin.Context, data interface{}) {
+func (h *Handler) RespondSuccessResp(c *gin.Context, data interface{}) {
 	c.AbortWithStatusJSON(http.StatusOK, Response{Code: 200, Data: data})
 }
 
 // RespondSuccessPaginationResp return success response context of the pagination request
-func RespondSuccessPaginationResp(c *gin.Context, data interface{}, paginationProcessor *PaginationProcessor) {
+func (h *Handler) RespondSuccessPaginationResp(c *gin.Context, data interface{}, paginationProcessor *PaginationProcessor) {
 	url := fmt.Sprintf("%v", c.Request.URL)
 	base := strings.Split(url, "?")[0]
 	links := paginationProcessor.getLinks(base)
@@ -63,4 +63,19 @@ func RespondSuccessPaginationResp(c *gin.Context, data interface{}, paginationPr
 			Links:      links,
 		},
 	})
+}
+
+// RespondErrorResp return error response
+func (h *SimpleHandler) RespondErrorResp(c *gin.Context, err error) {
+	log.WithFields(log.Fields{
+		"url":     c.Request.URL,
+		"request": c.Value(ReqBodyLabel),
+		"err":     err,
+	})
+	c.AbortWithStatusJSON(http.StatusOK, h.formatErrResp(err).Msg)
+}
+
+// RespondSuccessResp return success response
+func (h *SimpleHandler) RespondSuccessResp(c *gin.Context, data interface{}) {
+	c.AbortWithStatusJSON(http.StatusOK, data)
 }
