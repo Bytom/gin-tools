@@ -14,28 +14,29 @@ type FrontFilter func(ctx *gin.Context) error
 // RequestFilter represent a filter function that is filter request
 type RequestFilter func(ctx *gin.Context, req interface{}) error
 
-// SimpleHandler is a framework for processing each API request, which contains parsing request parameters, error handling and so on
-type SimpleHandler struct {
-	*Handler
-}
-
-// NewSimpleHandler return a handler instance
-func NewSimpleHandler(errorCodes map[error]int, frontFilters []FrontFilter, requestFilters []RequestFilter) *SimpleHandler {
-	return &SimpleHandler{&Handler{errorCodes: errorCodes, frontFilters: frontFilters, requestFilters: requestFilters}}
-}
-
 // Handler is a framework for processing each API request, which contains parsing request parameters, error handling and so on
 type Handler struct {
 	frontFilters   []FrontFilter
 	requestFilters []RequestFilter
 	errorCodes     map[error]int
+	respAdaptor    ResponseAdaptor
 }
 
 type handlerFun interface{}
 
 // NewHandler return a handler instance
 func NewHandler(errorCodes map[error]int, frontFilters []FrontFilter, requestFilters []RequestFilter) *Handler {
-	return &Handler{errorCodes: errorCodes, frontFilters: frontFilters, requestFilters: requestFilters}
+	return &Handler{
+		frontFilters:   frontFilters,
+		requestFilters: requestFilters,
+		errorCodes:     errorCodes,
+		respAdaptor:    &StandardResponse{},
+	}
+}
+
+func (h *Handler) SetResponseAdaptor(respAdaptor ResponseAdaptor) *Handler {
+	h.respAdaptor = respAdaptor
+	return h
 }
 
 func callHandleFunc(fun handlerFun, args ...interface{}) []interface{} {
@@ -90,7 +91,7 @@ func (h *Handler) HandleMiddleware(handleFunc interface{}) func(*gin.Context) {
 	return func(context *gin.Context) {
 		for _, filter := range h.frontFilters {
 			if err := filter(context); err != nil {
-				h.RespondErrorResp(context, err)
+				h.respAdaptor.RespondErrorResp(context, err, h.handlerErrCode(err))
 				return
 			}
 		}
@@ -101,13 +102,13 @@ func (h *Handler) HandleMiddleware(handleFunc interface{}) func(*gin.Context) {
 func (h *Handler) handleRequest(context *gin.Context, fun handlerFun) {
 	args, err := h.buildHandleFuncArgs(fun, context)
 	if err != nil {
-		h.RespondErrorResp(context, err)
+		h.respAdaptor.RespondErrorResp(context, err, h.handlerErrCode(err))
 		return
 	}
 
 	result := callHandleFunc(fun, args...)
 	if err := result[len(result)-1]; err != nil {
-		h.RespondErrorResp(context, err.(error))
+		h.respAdaptor.RespondErrorResp(context, err.(error), h.handlerErrCode(err.(error)))
 		return
 	}
 
@@ -116,11 +117,11 @@ func (h *Handler) handleRequest(context *gin.Context, fun handlerFun) {
 	}
 
 	if len(result) == 1 {
-		h.RespondSuccessResp(context, struct{}{})
+		h.respAdaptor.RespondSuccessResp(context, struct{}{})
 		return
 	}
 
-	h.RespondSuccessResp(context, result[0])
+	h.respAdaptor.RespondSuccessResp(context, result[0])
 }
 
 func (h *Handler) processPaginationIfPresent(args []interface{}, result []interface{}, context *gin.Context) bool {
@@ -134,7 +135,7 @@ func (h *Handler) processPaginationIfPresent(args []interface{}, result []interf
 	list := paginationResult.data
 	size := reflect.ValueOf(list).Len()
 	paginationProcessor := NewPaginationProcessor(query, size, paginationResult.total)
-	h.RespondSuccessPaginationResp(context, list, paginationProcessor)
+	h.respAdaptor.RespondSuccessPaginationResp(context, list, paginationProcessor)
 	return true
 }
 
@@ -212,4 +213,13 @@ func ValidateFuncType(fun handlerFun) error {
 		return errors.New("the last return value must error in " + ft.String())
 	}
 	return nil
+}
+
+func (h *Handler) handlerErrCode(err error) int {
+	root := errors.Root(err)
+	if errCode, ok := h.errorCodes[root]; ok {
+		return errCode
+	}
+
+	return 0
 }

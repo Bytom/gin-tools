@@ -10,6 +10,17 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// ResponseAdaptor response interface
+type ResponseAdaptor interface {
+	RespondErrorResp(c *gin.Context, err error, errCode int)
+	RespondSuccessResp(c *gin.Context, data interface{})
+	RespondSuccessPaginationResp(c *gin.Context, data interface{}, paginationProcessor *PaginationProcessor)
+}
+
+// StandardResponse standard response
+type StandardResponse struct {
+}
+
 // Response describes the response standard. Code & Msg are always present.
 // Data is present for a success response only.
 type Response struct {
@@ -20,17 +31,17 @@ type Response struct {
 }
 
 // RespondErrorResp return error response
-func (h *Handler) RespondErrorResp(c *gin.Context, err error) {
+func (h *StandardResponse) RespondErrorResp(c *gin.Context, err error, errCode int) {
 	log.WithFields(log.Fields{
 		"url":     c.Request.URL,
 		"request": c.Value(ReqBodyLabel),
 		"err":     err,
 	})
-	c.AbortWithStatusJSON(http.StatusOK, h.formatErrResp(err))
+	c.AbortWithStatusJSON(http.StatusOK, h.formatErrResp(err, errCode))
 }
 
 // formatErrResp will find error code by specified error, then build the err response
-func (h *Handler) formatErrResp(err error) Response {
+func (h *StandardResponse) formatErrResp(err error, code int) Response {
 	// default error response
 	response := Response{
 		Code: 300,
@@ -38,20 +49,20 @@ func (h *Handler) formatErrResp(err error) Response {
 	}
 
 	root := errors.Root(err)
-	if errCode, ok := h.errorCodes[root]; ok {
-		response.Code = errCode
+	if code != 0 {
+		response.Code = code
 		response.Msg = root.Error()
 	}
 	return response
 }
 
 // RespondSuccessResp return success response
-func (h *Handler) RespondSuccessResp(c *gin.Context, data interface{}) {
+func (h *StandardResponse) RespondSuccessResp(c *gin.Context, data interface{}) {
 	c.AbortWithStatusJSON(http.StatusOK, Response{Code: 200, Data: data})
 }
 
 // RespondSuccessPaginationResp return success response context of the pagination request
-func (h *Handler) RespondSuccessPaginationResp(c *gin.Context, data interface{}, paginationProcessor *PaginationProcessor) {
+func (h *StandardResponse) RespondSuccessPaginationResp(c *gin.Context, data interface{}, paginationProcessor *PaginationProcessor) {
 	url := fmt.Sprintf("%v", c.Request.URL)
 	base := strings.Split(url, "?")[0]
 	links := paginationProcessor.getLinks(base)
@@ -65,17 +76,26 @@ func (h *Handler) RespondSuccessPaginationResp(c *gin.Context, data interface{},
 	})
 }
 
+// SimpleResponse simple response
+type SimpleResponse struct {
+}
+
 // RespondErrorResp return error response
-func (h *SimpleHandler) RespondErrorResp(c *gin.Context, err error) {
+func (h *SimpleResponse) RespondErrorResp(c *gin.Context, err error, errCode int) {
 	log.WithFields(log.Fields{
 		"url":     c.Request.URL,
 		"request": c.Value(ReqBodyLabel),
 		"err":     err,
 	})
-	c.AbortWithStatusJSON(http.StatusOK, h.formatErrResp(err).Msg)
+	c.AbortWithStatusJSON(http.StatusOK, errors.Root(err).Error())
 }
 
 // RespondSuccessResp return success response
-func (h *SimpleHandler) RespondSuccessResp(c *gin.Context, data interface{}) {
+func (h *SimpleResponse) RespondSuccessResp(c *gin.Context, data interface{}) {
+	c.AbortWithStatusJSON(http.StatusOK, data)
+}
+
+// RespondSuccessPaginationResp return success response context of the pagination request
+func (h *SimpleResponse) RespondSuccessPaginationResp(c *gin.Context, data interface{}, paginationProcessor *PaginationProcessor) {
 	c.AbortWithStatusJSON(http.StatusOK, data)
 }
