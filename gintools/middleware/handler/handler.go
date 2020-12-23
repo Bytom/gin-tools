@@ -133,8 +133,7 @@ func (h *Handler) processPaginationIfPresent(args []interface{}, result []interf
 
 	paginationResult := result[0].(*PaginationResult)
 	list := paginationResult.data
-	size := reflect.ValueOf(list).Len()
-	paginationProcessor := NewPaginationProcessor(query, size, paginationResult.total)
+	paginationProcessor := NewPaginationProcessor(query, paginationResult.total)
 	h.respAdaptor.RespondSuccessPaginationResp(context, list, paginationProcessor)
 	return true
 }

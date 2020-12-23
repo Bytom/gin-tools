@@ -85,14 +85,14 @@ type PaginationProcessor struct {
 }
 
 // NewPaginationProcessor create a new PaginationProcessor
-func NewPaginationProcessor(query *PaginationQuery, size int, total uint64) *PaginationProcessor {
+func NewPaginationProcessor(query *PaginationQuery, total uint64) *PaginationProcessor {
 	return &PaginationProcessor{
 		Pagination: &Pagination{
 			Start: query.Start,
 			Limit: query.Limit,
 			Total: total,
 		},
-		HasNext: size == int(query.Limit),
+		HasNext: total >= query.Limit+query.Start,
 		HasPrev: 0 != int(query.Start),
 	}
 }
