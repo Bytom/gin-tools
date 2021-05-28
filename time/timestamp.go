@@ -1,6 +1,8 @@
 package time
 
 import (
+	"database/sql/driver"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -17,6 +19,7 @@ func (t *Timestamp) Unix() int64 {
 	if tt.IsZero() {
 		return 0
 	}
+
 	return tt.Unix()
 }
 
@@ -57,5 +60,20 @@ func (t *Timestamp) SetBSON(raw bson.Raw) error {
 	}
 
 	*t = Timestamp(time.Unix(decoded.Value, 0))
+	return nil
+}
+
+func (t *Timestamp) Value() (driver.Value, error) {
+	return time.Time(*t).Format("2006-01-02 15:04:05"), nil
+}
+
+func (t *Timestamp) Scan(v interface{}) error {
+	switch vt := v.(type) {
+	case time.Time:
+		*t = Timestamp(vt)
+	default:
+		return errors.New("type error")
+	}
+
 	return nil
 }
